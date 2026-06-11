@@ -177,27 +177,29 @@ def buscar_resumo():
 def perguntar_coach(pergunta: str, contexto: str = "") -> str:
     if not ANTHROPIC_API_KEY:
         return "Configure ANTHROPIC_API_KEY para usar o coach de IA."
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    system = (
-        "Você é um coach de vida pessoal e financeiro. Seu usuário tem 30-40 anos, "
-        "um filho de 12 anos, e quer acumular R$ 1 milhão em 10 anos. "
-        "Ele acorda às " + cfg_get("hora_acordar", "06:00") + " e dorme às " + cfg_get("hora_dormir", "22:00") + ". "
-        "Meta de renda mensal: R$ " + cfg_get("meta_mensal_renda", "15000") + ". "
-        "Seja direto, motivador e prático. Máximo 300 palavras. "
-        "Foque em ações concretas para hoje. Fale em português brasileiro."
-    )
-    prompt = (contexto + "\n\n" + pergunta).strip() if contexto else pergunta
-    msg = client.messages.create(
-        model="claude-opus-4-8",
-        max_tokens=600,
-        thinking={"type": "adaptive"},
-        system=system,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    for block in msg.content:
-        if block.type == "text":
-            return block.text
-    return "Sem resposta."
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        system = (
+            "Você é um coach de vida pessoal e financeiro. Seu usuário tem 30-40 anos, "
+            "um filho de 12 anos, e quer acumular R$ 1 milhão em 10 anos. "
+            "Ele acorda às " + cfg_get("hora_acordar", "06:00") + " e dorme às " + cfg_get("hora_dormir", "22:00") + ". "
+            "Meta de renda mensal: R$ " + cfg_get("meta_mensal_renda", "15000") + ". "
+            "Seja direto, motivador e prático. Máximo 300 palavras. "
+            "Foque em ações concretas para hoje. Fale em português brasileiro."
+        )
+        prompt = (contexto + "\n\n" + pergunta).strip() if contexto else pergunta
+        msg = client.messages.create(
+            model="claude-opus-4-8",
+            max_tokens=600,
+            system=system,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        for block in msg.content:
+            if hasattr(block, "text"):
+                return block.text
+        return "Sem resposta."
+    except Exception as e:
+        return f"Erro ao consultar coach: {str(e)[:100]}"
 
 def gerar_briefing_diario() -> str:
     if not ANTHROPIC_API_KEY:
@@ -242,24 +244,26 @@ def gerar_briefing_diario() -> str:
         partes.append(f"Meta principal: {m['nome']} — R$ {m['valor_atual']:,.2f} / R$ {m['valor_alvo']:,.2f}")
 
     contexto = " ".join(partes)
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    msg = client.messages.create(
-        model="claude-opus-4-8",
-        max_tokens=700,
-        thinking={"type": "adaptive"},
-        messages=[{"role": "user", "content": (
-            f"{contexto}\n\n"
-            "Crie um briefing motivador de manhã para o usuário. Inclua:\n"
-            "1. Frase motivadora do dia\n"
-            "2. 3 prioridades para hoje (financeiro, saúde, família)\n"
-            "3. Dica prática para se aproximar do R$1 milhão\n"
-            "4. Atividade sugerida com o filho hoje\n"
-            "Seja conciso, use emojis, máximo 250 palavras. Português brasileiro."
-        )}]
-    )
-    for block in msg.content:
-        if block.type == "text":
-            return block.text
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        msg = client.messages.create(
+            model="claude-opus-4-8",
+            max_tokens=700,
+            messages=[{"role": "user", "content": (
+                f"{contexto}\n\n"
+                "Crie um briefing motivador de manhã para o usuário. Inclua:\n"
+                "1. Frase motivadora do dia\n"
+                "2. 3 prioridades para hoje (financeiro, saúde, família)\n"
+                "3. Dica prática para se aproximar do R$1 milhão\n"
+                "4. Atividade sugerida com o filho hoje\n"
+                "Seja conciso, use emojis, máximo 250 palavras. Português brasileiro."
+            )}]
+        )
+        for block in msg.content:
+            if hasattr(block, "text"):
+                return block.text
+    except Exception:
+        pass
     return None
 
 def gerar_resumo_noite() -> str:
@@ -276,23 +280,25 @@ def gerar_resumo_noite() -> str:
 
     total = len(habitos_full)
     pct = int(len(feitos) / total * 100) if total else 0
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    msg = client.messages.create(
-        model="claude-opus-4-8",
-        max_tokens=400,
-        thinking={"type": "adaptive"},
-        messages=[{"role": "user", "content": (
-            f"Hoje o usuário completou {len(feitos)}/{total} hábitos ({pct}%).\n"
-            f"Feitos: {', '.join(feitos) if feitos else 'nenhum'}.\n"
-            f"Perdidos: {', '.join(pendentes) if pendentes else 'nenhum'}.\n\n"
-            "Faça uma reflexão noturna curta: elogie o que foi feito, "
-            "encoraje para amanhã, lembre do objetivo do R$1 milhão. "
-            "Máximo 150 palavras. Use emojis. Português brasileiro."
-        )}]
-    )
-    for block in msg.content:
-        if block.type == "text":
-            return block.text
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        msg = client.messages.create(
+            model="claude-opus-4-8",
+            max_tokens=400,
+            messages=[{"role": "user", "content": (
+                f"Hoje o usuário completou {len(feitos)}/{total} hábitos ({pct}%).\n"
+                f"Feitos: {', '.join(feitos) if feitos else 'nenhum'}.\n"
+                f"Perdidos: {', '.join(pendentes) if pendentes else 'nenhum'}.\n\n"
+                "Faça uma reflexão noturna curta: elogie o que foi feito, "
+                "encoraje para amanhã, lembre do objetivo do R$1 milhão. "
+                "Máximo 150 palavras. Use emojis. Português brasileiro."
+            )}]
+        )
+        for block in msg.content:
+            if hasattr(block, "text"):
+                return block.text
+    except Exception:
+        pass
     return None
 
 # ─── JOBS AGENDADOS ──────────────────────────────────────────────────────────
@@ -682,7 +688,10 @@ async def cmd_dia(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if SEU_ID and update.effective_user.id != SEU_ID:
         return
     await update.message.reply_text("☀️ Gerando seu briefing do dia...")
-    briefing = gerar_briefing_diario()
+    try:
+        briefing = gerar_briefing_diario()
+    except Exception as e:
+        briefing = None
     if not briefing:
         briefing = rotina_texto()
     await update.message.reply_text(f"☀️ *Seu Dia*\n\n{briefing}", parse_mode="Markdown")
