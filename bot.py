@@ -55,6 +55,12 @@ def init_db():
             livro_id INTEGER, data TEXT, paginas INTEGER
         );
         CREATE TABLE IF NOT EXISTS config (chave TEXT PRIMARY KEY, valor TEXT);
+        CREATE TABLE IF NOT EXISTS transacoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            data TEXT, hora TEXT, descricao TEXT,
+            valor REAL, tipo TEXT, categoria TEXT,
+            criado_em TEXT DEFAULT CURRENT_TIMESTAMP
+        );
     """)
     # Hábitos padrão
     c.execute("SELECT COUNT(*) FROM habitos")
@@ -76,6 +82,7 @@ def init_db():
         ("hora_dormir", "22:00"),
         ("meta_mensal_renda", "15000"),
         ("livro_atual_id", "0"),
+        ("saldo_inicial", "35385.11"),
     ]
     for chave, valor in configs:
         c.execute("INSERT OR IGNORE INTO config VALUES (?,?)", (chave, valor))
@@ -153,27 +160,52 @@ def parse_lancamento(texto: str):
 
 def registrar_no_sheets(descricao, valor, tipo, categoria):
     agora = datetime.datetime.now()
-    params = {
-        "acao": "add",
-        "data": agora.strftime("%d/%m/%Y"), "hora": agora.strftime("%H:%M"),
-        "descricao": descricao, "valor": valor, "tipo": tipo, "categoria": categoria,
-    }
     try:
-        r = requests.get(SHEETS_WEBHOOK, params=params, timeout=15)
-        if r.status_code == 200:
-            return True, None
-        return False, f"HTTP {r.status_code}: {r.text[:80]}"
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO transacoes (data, hora, descricao, valor, tipo, categoria) VALUES (?,?,?,?,?,?)",
+            (agora.strftime("%d/%m/%Y"), agora.strftime("%H:%M"), descricao, valor, tipo, categoria)
+        )
+        conn.commit()
+        conn.close()
+        return True, None
     except Exception as e:
         return False, str(e)[:100]
 
 def buscar_resumo():
     try:
-        r = requests.get(SHEETS_WEBHOOK, timeout=10)
-        if r.status_code == 200:
-            return r.json()
+        conn = get_db()
+        saldo_inicial = float(cfg_get("saldo_inicial", "0"))
+        mes_atual = datetime.datetime.now(BRT).strftime("%m/%Y")
+
+        total_entradas = conn.execute(
+            "SELECT COALESCE(SUM(valor),0) FROM transacoes WHERE tipo='Entrada'"
+        ).fetchone()[0]
+        total_saidas = conn.execute(
+            "SELECT COALESCE(SUM(valor),0) FROM transacoes WHERE tipo='Saída'"
+        ).fetchone()[0]
+        entradas_mes = conn.execute(
+            "SELECT COALESCE(SUM(valor),0) FROM transacoes WHERE tipo='Entrada' AND data LIKE ?",
+            (f"%/{mes_atual}",)
+        ).fetchone()[0]
+        saidas_mes = conn.execute(
+            "SELECT COALESCE(SUM(valor),0) FROM transacoes WHERE tipo='Saída' AND data LIKE ?",
+            (f"%/{mes_atual}",)
+        ).fetchone()[0]
+        top_cats = conn.execute(
+            "SELECT categoria, SUM(valor) as total FROM transacoes WHERE tipo='Saída' "
+            "GROUP BY categoria ORDER BY total DESC LIMIT 3"
+        ).fetchall()
+        conn.close()
+        return {
+            "saldo": saldo_inicial + total_entradas - total_saidas,
+            "entradas_mes": entradas_mes,
+            "saidas_mes": saidas_mes,
+            "resultado_mes": entradas_mes - saidas_mes,
+            "top_categorias": [[r["categoria"], r["total"]] for r in top_cats],
+        }
     except Exception:
-        pass
-    return None
+        return None
 
 # ─── AI COACH ────────────────────────────────────────────────────────────────
 
