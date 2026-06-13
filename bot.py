@@ -61,6 +61,10 @@ def init_db():
             valor REAL, tipo TEXT, categoria TEXT,
             criado_em TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS pesagens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            data TEXT, peso REAL
+        );
     """)
     # Hábitos padrão
     c.execute("SELECT COUNT(*) FROM habitos")
@@ -83,6 +87,9 @@ def init_db():
         ("meta_mensal_renda", "15000"),
         ("livro_atual_id", "0"),
         ("saldo_inicial", "35385.11"),
+        ("peso_atual", "115.0"),
+        ("peso_meta", "100.0"),
+        ("peso_inicial", "115.0"),
     ]
     for chave, valor in configs:
         c.execute("INSERT OR IGNORE INTO config VALUES (?,?)", (chave, valor))
@@ -725,6 +732,91 @@ async def cmd_saldo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     except ValueError:
         await update.message.reply_text("Uso: /saldo 31880.88")
 
+async def cmd_peso(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if SEU_ID and update.effective_user.id != SEU_ID:
+        return
+    conn = get_db()
+    if ctx.args:
+        try:
+            peso = float(ctx.args[0].replace(",", "."))
+            hoje = datetime.datetime.now(BRT).strftime("%Y-%m-%d")
+            conn.execute("INSERT INTO pesagens (data, peso) VALUES (?,?)", (hoje, peso))
+            cfg_set("peso_atual", str(peso))
+            conn.commit()
+            peso_inicial = float(cfg_get("peso_inicial", "115"))
+            peso_meta = float(cfg_get("peso_meta", "100"))
+            perdido = peso_inicial - peso
+            falta = peso - peso_meta
+            barra = barra_progresso(perdido, peso_inicial - peso_meta)
+            conn.close()
+            await update.message.reply_text(
+                f"⚖️ *Peso registrado: {peso:.1f} kg*\n\n"
+                f"`{barra}`\n"
+                f"Perdido: {perdido:.1f} kg\n"
+                f"Falta: {falta:.1f} kg para {peso_meta:.0f} kg\n\n"
+                f"{'🎉 Meta atingida!' if falta <= 0 else f'Continue! Você consegue! 💪'}",
+                parse_mode="Markdown"
+            )
+        except ValueError:
+            conn.close()
+            await update.message.reply_text("Uso: /peso 113.5")
+        return
+
+    pesagens = conn.execute(
+        "SELECT data, peso FROM pesagens ORDER BY id DESC LIMIT 10"
+    ).fetchall()
+    conn.close()
+    peso_atual = float(cfg_get("peso_atual", "115"))
+    peso_meta = float(cfg_get("peso_meta", "100"))
+    peso_inicial = float(cfg_get("peso_inicial", "115"))
+    perdido = peso_inicial - peso_atual
+    barra = barra_progresso(perdido, peso_inicial - peso_meta)
+
+    texto = f"⚖️ *Controle de Peso*\n\n`{barra}`\n{peso_atual:.1f} kg → meta {peso_meta:.0f} kg\nPerdido: {perdido:.1f} kg\n\n"
+    if pesagens:
+        texto += "*Histórico:*\n"
+        for p in reversed(pesagens):
+            texto += f"  {p['data']}: {p['peso']:.1f} kg\n"
+    texto += "\nRegistre: `/peso 113.5`"
+    await update.message.reply_text(texto, parse_mode="Markdown")
+
+async def cmd_dieta(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if SEU_ID and update.effective_user.id != SEU_ID:
+        return
+    texto = (
+        "🥗 *Plano Alimentar — 2.300 kcal/dia*\n"
+        "_Para 115kg → 100kg até dezembro_\n\n"
+        "☀️ *Café da manhã (7:10)*\n"
+        "  • 4 ovos mexidos ou cozidos\n"
+        "  • 2 fatias pão integral\n"
+        "  • 1 banana\n"
+        "  • Café sem açúcar\n\n"
+        "🍎 *Lanche manhã (10:00)*\n"
+        "  • 1 iogurte grego natural (sem açúcar)\n"
+        "  • 1 fruta (maçã, laranja ou pera)\n\n"
+        "🍽️ *Almoço (12:00)*\n"
+        "  • Arroz integral — 4 colheres\n"
+        "  • Feijão — 1 concha\n"
+        "  • Frango/peixe grelhado — 200g\n"
+        "  • Salada à vontade (sem molho industrializado)\n"
+        "  • 1 colher de azeite\n\n"
+        "🌰 *Lanche tarde (15:30)*\n"
+        "  • 30g castanhas ou amendoim\n"
+        "  • 1 fruta\n\n"
+        "🌙 *Jantar (19:00)*\n"
+        "  • Proteína magra — 200g (carne, frango ou peixe)\n"
+        "  • Legumes refogados à vontade\n"
+        "  • Salada verde\n\n"
+        "❌ *Evitar sempre:*\n"
+        "  • Refrigerante e suco industrializado\n"
+        "  • Frituras\n"
+        "  • Pão branco, biscoito, bolo\n"
+        "  • Fast food\n\n"
+        "💧 *Beber 2-3L de água por dia*\n\n"
+        "📊 Registre seu peso toda semana: `/peso 114.5`"
+    )
+    await update.message.reply_text(texto, parse_mode="Markdown")
+
 async def cmd_coach(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if SEU_ID and update.effective_user.id != SEU_ID:
         return
@@ -908,6 +1000,8 @@ def main():
     app.add_handler(CommandHandler("leitura",    cmd_leitura))
     app.add_handler(CommandHandler("horario",    cmd_horario))
     app.add_handler(CommandHandler("saldo",      cmd_saldo))
+    app.add_handler(CommandHandler("peso",       cmd_peso))
+    app.add_handler(CommandHandler("dieta",      cmd_dieta))
     app.add_handler(CommandHandler("coach",      cmd_coach))
     app.add_handler(CommandHandler("dia",        cmd_dia))
     app.add_handler(CommandHandler("agenda",     cmd_agenda))
