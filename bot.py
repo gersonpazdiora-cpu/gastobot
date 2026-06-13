@@ -705,6 +705,26 @@ async def cmd_horario(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
+async def cmd_saldo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if SEU_ID and update.effective_user.id != SEU_ID:
+        return
+    if not ctx.args:
+        saldo_ini = float(cfg_get("saldo_inicial", "0"))
+        dados = buscar_resumo()
+        saldo_atual = dados.get("saldo", saldo_ini) if dados else saldo_ini
+        await update.message.reply_text(
+            f"💰 Saldo atual: R$ {saldo_atual:,.2f}\n\n"
+            f"Para atualizar o saldo inicial:\n`/saldo 31880.88`",
+            parse_mode="Markdown"
+        )
+        return
+    try:
+        novo = float(ctx.args[0].replace(",", "."))
+        cfg_set("saldo_inicial", str(novo))
+        await update.message.reply_text(f"✅ Saldo inicial atualizado para R$ {novo:,.2f}")
+    except ValueError:
+        await update.message.reply_text("Uso: /saldo 31880.88")
+
 async def cmd_coach(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if SEU_ID and update.effective_user.id != SEU_ID:
         return
@@ -887,6 +907,7 @@ def main():
     app.add_handler(CommandHandler("livro",      cmd_livro))
     app.add_handler(CommandHandler("leitura",    cmd_leitura))
     app.add_handler(CommandHandler("horario",    cmd_horario))
+    app.add_handler(CommandHandler("saldo",      cmd_saldo))
     app.add_handler(CommandHandler("coach",      cmd_coach))
     app.add_handler(CommandHandler("dia",        cmd_dia))
     app.add_handler(CommandHandler("agenda",     cmd_agenda))
