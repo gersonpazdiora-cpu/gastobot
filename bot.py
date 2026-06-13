@@ -840,6 +840,121 @@ async def cmd_dieta(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(texto, parse_mode="Markdown")
 
+TREINOS = {
+    "Segunda": {
+        "foco": "Peito + Tríceps",
+        "aquecimento": "5min corrida leve ou corda",
+        "exercicios": [
+            "Supino reto — 4x12 (descanso 60s)",
+            "Flexão tradicional — 4x15 (descanso 45s)",
+            "Flexão fechada (tríceps) — 3x12 (descanso 45s)",
+            "Tríceps francês com halter 10kg — 3x12 (descanso 60s)",
+            "Abdominal supra — 4x20 (descanso 30s)",
+            "Prancha — 3x45seg (descanso 30s)",
+        ],
+        "finalizacao": "Corda 3x1min • alongamento 5min",
+        "dica": "No supino, desça devagar (3 seg) e suba rápido para maximizar o resultado.",
+    },
+    "Terça": {
+        "foco": "Costas + Bíceps",
+        "aquecimento": "5min corda ou corrida",
+        "exercicios": [
+            "Remada curvada com halteres 10kg — 4x12 (descanso 60s)",
+            "Flexão com pegada larga — 4x12 (descanso 45s)",
+            "Rosca direta com halteres 10kg — 4x12 (descanso 60s)",
+            "Rosca martelo com halteres — 3x12 (descanso 60s)",
+            "Abdominal oblíquo — 3x20 cada lado (descanso 30s)",
+            "Abdominal bicicleta — 3x20 (descanso 30s)",
+        ],
+        "finalizacao": "Corrida leve 8min • alongamento 5min",
+        "dica": "Na remada, puxe o cotovelo para trás e aperte as escápulas — não balance o corpo.",
+    },
+    "Quarta": {
+        "foco": "Cardio + Core (queima de gordura)",
+        "aquecimento": "3min caminhada rápida",
+        "exercicios": [
+            "Corrida contínua — 20min (ritmo moderado)",
+            "Corda — 5x2min (descanso 45s entre séries)",
+            "Abdominal supra — 4x25 (descanso 30s)",
+            "Prancha lateral — 3x30seg cada lado",
+            "Abdominal bicicleta — 4x20 (descanso 30s)",
+            "Mountain climber — 3x30seg (descanso 30s)",
+        ],
+        "finalizacao": "Caminhada 5min para recuperar • alongamento completo 8min",
+        "dica": "Quarta é o dia que mais queima gordura. Mantém o ritmo constante na corrida.",
+    },
+    "Quinta": {
+        "foco": "Ombros + Pernas",
+        "aquecimento": "5min corrida ou corda",
+        "exercicios": [
+            "Desenvolvimento com halteres 10kg — 4x12 (descanso 60s)",
+            "Elevação lateral com halteres — 3x15 (descanso 45s)",
+            "Agachamento livre — 4x15 (descanso 60s)",
+            "Afundo — 3x12 cada perna (descanso 60s)",
+            "Elevação de panturrilha — 3x20 (descanso 30s)",
+            "Abdominal com pernas elevadas — 3x20 (descanso 30s)",
+        ],
+        "finalizacao": "Corda 3x1min • alongamento pernas e ombros 5min",
+        "dica": "No agachamento, desça até a coxa ficar paralela ao chão — joelhos atrás dos pés.",
+    },
+    "Sexta": {
+        "foco": "HIIT Full Body (circuito)",
+        "aquecimento": "3min corrida leve",
+        "exercicios": [
+            "🔄 4 rounds do circuito abaixo (40s trabalho / 20s descanso):",
+            "① Flexão tradicional",
+            "② Agachamento com salto",
+            "③ Corda",
+            "④ Remada com halteres 10kg",
+            "⑤ Mountain climber",
+            "⑥ Abdominal bicicleta",
+            "(Descanso 90s entre rounds)",
+        ],
+        "finalizacao": "Corrida leve 5min • alongamento completo 10min",
+        "dica": "Sexta é a mais intensa. Se não conseguir 4 rounds, faz 3 — o importante é terminar.",
+    },
+}
+
+async def cmd_treino(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if SEU_ID and update.effective_user.id != SEU_ID:
+        return
+    dia_semana = datetime.datetime.now(BRT).strftime("%A")
+    dias_pt = {
+        "Monday": "Segunda", "Tuesday": "Terça", "Wednesday": "Quarta",
+        "Thursday": "Quinta", "Friday": "Sexta", "Saturday": "Sábado", "Sunday": "Domingo"
+    }
+    dia_pt = dias_pt.get(dia_semana, dia_semana)
+
+    if dia_pt not in TREINOS:
+        await update.message.reply_text(
+            f"💤 Hoje é {dia_pt} — dia de descanso ativo.\n\n"
+            "Sugestão: caminhada leve 30min com o Thor ou alongamento.\n"
+            "Seu corpo precisa recuperar para crescer! 💪"
+        )
+        return
+
+    treino = TREINOS[dia_pt]
+    exercicios_txt = "\n".join(f"  {i+1}. {e}" for i, e in enumerate(treino["exercicios"]))
+
+    texto = (
+        f"🏋️ *Treino de {dia_pt} — {treino['foco']}*\n\n"
+        f"🔥 *Aquecimento:* {treino['aquecimento']}\n\n"
+        f"💪 *Exercícios:*\n{exercicios_txt}\n\n"
+        f"🏁 *Finalização:* {treino['finalizacao']}\n\n"
+        f"💡 *Dica do dia:* {treino['dica']}"
+    )
+    await update.message.reply_text(texto, parse_mode="Markdown")
+
+async def cmd_semana_treino(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if SEU_ID and update.effective_user.id != SEU_ID:
+        return
+    texto = "📅 *Semana de Treinos*\n\n"
+    for dia, treino in TREINOS.items():
+        texto += f"*{dia}:* {treino['foco']}\n"
+    texto += "\n*Sábado e Domingo:* Descanso ativo (caminhada, alongamento)\n\n"
+    texto += "Use /treino para ver o treino completo de hoje."
+    await update.message.reply_text(texto, parse_mode="Markdown")
+
 async def cmd_coach(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if SEU_ID and update.effective_user.id != SEU_ID:
         return
@@ -1023,8 +1138,10 @@ def main():
     app.add_handler(CommandHandler("leitura",    cmd_leitura))
     app.add_handler(CommandHandler("horario",    cmd_horario))
     app.add_handler(CommandHandler("saldo",      cmd_saldo))
-    app.add_handler(CommandHandler("peso",       cmd_peso))
+    app.add_handler(CommandHandler("peso",        cmd_peso))
     app.add_handler(CommandHandler("dieta",      cmd_dieta))
+    app.add_handler(CommandHandler("treino",     cmd_treino))
+    app.add_handler(CommandHandler("semana",     cmd_semana_treino))
     app.add_handler(CommandHandler("coach",      cmd_coach))
     app.add_handler(CommandHandler("dia",        cmd_dia))
     app.add_handler(CommandHandler("agenda",     cmd_agenda))
