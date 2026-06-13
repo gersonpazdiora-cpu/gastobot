@@ -83,7 +83,7 @@ def init_db():
     # Config padrão
     configs = [
         ("hora_acordar", "06:00"),
-        ("hora_dormir", "22:00"),
+        ("hora_dormir", "23:00"),
         ("meta_mensal_renda", "15000"),
         ("livro_atual_id", "0"),
         ("saldo_inicial", "35385.11"),
@@ -365,8 +365,6 @@ async def job_noite(context):
         await context.bot.send_message(chat_id=SEU_ID, text=f"🌙 *Boa noite!*\n\n{resumo}", parse_mode="Markdown")
 
 def rotina_texto() -> str:
-    hora_acorda = cfg_get("hora_acordar", "06:00")
-    hora_dorme = cfg_get("hora_dormir", "22:00")
     meta_renda = cfg_get("meta_mensal_renda", "15000")
     livro_id = cfg_get("livro_atual_id", "0")
     livro_info = ""
@@ -375,25 +373,23 @@ def rotina_texto() -> str:
         livro = conn.execute("SELECT titulo, paginas_por_dia FROM livros WHERE id=?", (livro_id,)).fetchone()
         conn.close()
         if livro:
-            livro_info = f"\n📚 Leitura: {livro['paginas_por_dia']} páginas de *{livro['titulo']}*"
+            livro_info = f" — {livro['titulo']}"
 
     return (
-        f"*Sua Rotina Diária de Sucesso*\n\n"
-        f"⏰ Acordar: {hora_acorda}\n"
-        f"💪 06:30 — Exercício 30min\n"
-        f"🧘 07:00 — Meditação 10min\n"
-        f"☕ 07:10 — Café + planejamento do dia\n"
-        f"💼 08:00 — Trabalho (foco em gerar R$ {float(meta_renda):,.0f}/mês)\n"
-        f"🍽️ 12:00 — Almoço\n"
-        f"📚 13:00 — Leitura 20min{livro_info}\n"
-        f"💼 13:30 — Trabalho / prospecção de clientes\n"
-        f"👦 17:00 — Atividade com seu filho\n"
-        f"🍽️ 19:00 — Jantar em família\n"
-        f"📊 20:00 — Revisão financeira do dia\n"
-        f"📚 20:30 — Estudo / desenvolvimento\n"
-        f"😴 Dormir: {hora_dorme}\n\n"
+        f"*Rotina Diária de Sucesso*\n\n"
+        f"⏰ 06:00 — Acordar\n"
+        f"💪 06:30 — Exercícios\n"
+        f"🧘 07:30 — Meditar\n"
+        f"☕ 07:45 — Café + banho + planejamento do dia\n"
+        f"💼 08:30 — Trabalho (meta R$ {float(meta_renda):,.0f}/mês)\n"
+        f"🍗 13:00 — Almoço + áudio book{livro_info}\n"
+        f"⚡ 14:00 — Prospecção de clientes\n"
+        f"🥊 18:30 — Lanche + treino\n"
+        f"🍲 21:00 — Janta com Thor • sem celular\n"
+        f"📚 22:00 — Estudo / revisão\n"
+        f"😴 23:00 — Dormir\n\n"
         f"💡 *Meta:* R$ 1.000.000 em 10 anos\n"
-        f"   → Invista R$ {5000:,.0f}/mês para chegar lá"
+        f"   → Invista R$ 5.000/mês para chegar lá"
     )
 
 # ─── COMANDOS ────────────────────────────────────────────────────────────────
@@ -831,11 +827,11 @@ async def cmd_dieta(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"🥗 *{plano['nome']}*\n"
         f"_2.300 kcal/dia • 115kg → 100kg até dezembro_\n"
         f"_Próxima variação em {dias_restantes} dias_\n\n"
-        f"☀️ *Café da manhã (7:10)*\n  • {plano['cafe']}\n\n"
-        f"🍎 *Lanche manhã (10:00)*\n  • {plano['lanche_manha']}\n\n"
-        f"🍽️ *Almoço (12:00)*\n  • {plano['almoco']}\n\n"
-        f"🌰 *Lanche tarde (15:30)*\n  • {plano['lanche_tarde']}\n\n"
-        f"🌙 *Jantar (19:00)*\n  • {plano['jantar']}\n\n"
+        f"☀️ *Café da manhã (07:45)*\n  • {plano['cafe']}\n\n"
+        f"🍎 *Lanche manhã (10:30)*\n  • {plano['lanche_manha']}\n\n"
+        f"🍗 *Almoço (13:00)*\n  • {plano['almoco']}\n\n"
+        f"🥊 *Lanche pré-treino (18:30)*\n  • {plano['lanche_tarde']}\n\n"
+        f"🌙 *Jantar com Thor (21:00)*\n  • {plano['jantar']}\n\n"
         f"❌ *Evitar sempre:*\n"
         f"  • Refrigerante, suco industrializado, frituras\n"
         f"  • Pão branco, biscoito, fast food\n\n"
@@ -1040,12 +1036,12 @@ def main():
     if SEU_ID and app.job_queue:
         app.job_queue.run_daily(
             job_manha,
-            time=datetime.time(6, 30, tzinfo=BRT),
+            time=datetime.time(6, 0, tzinfo=BRT),
             name="briefing_manha"
         )
         app.job_queue.run_daily(
             job_noite,
-            time=datetime.time(21, 0, tzinfo=BRT),
+            time=datetime.time(22, 30, tzinfo=BRT),
             name="resumo_noite"
         )
 
