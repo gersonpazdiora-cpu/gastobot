@@ -780,40 +780,67 @@ async def cmd_peso(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     texto += "\nRegistre: `/peso 113.5`"
     await update.message.reply_text(texto, parse_mode="Markdown")
 
+PLANOS_DIETA = [
+    {
+        "nome": "Fase 1 — Base proteica com frango",
+        "cafe": "4 ovos mexidos + 2 fatias pão integral + 1 banana + café sem açúcar",
+        "lanche_manha": "1 iogurte grego natural + 1 maçã",
+        "almoco": "Arroz integral (4 col) + feijão (1 concha) + frango grelhado 200g + salada à vontade + azeite",
+        "lanche_tarde": "30g amendoim + 1 laranja",
+        "jantar": "Frango 200g + brócolis/abobrinha refogados + salada verde",
+    },
+    {
+        "nome": "Fase 2 — Foco em peixe e ovos",
+        "cafe": "Omelete 3 ovos + queijo cottage + 1 fatia pão integral + café sem açúcar",
+        "lanche_manha": "1 scoop whey ou iogurte grego + 1 pera",
+        "almoco": "Arroz integral (4 col) + lentilha (1 concha) + tilápia/atum grelhado 200g + salada + limão",
+        "lanche_tarde": "30g castanha-do-pará + 1 banana",
+        "jantar": "Peixe 200g + espinafre/couve refogada + tomate + pepino",
+    },
+    {
+        "nome": "Fase 3 — Variedade com carne magra",
+        "cafe": "4 ovos cozidos + 1 batata-doce pequena + café sem açúcar",
+        "lanche_manha": "1 iogurte grego + granola sem açúcar (2 col) + 1 fruta",
+        "almoco": "Arroz integral (3 col) + feijão (1 concha) + patinho/alcatra grelhado 180g + salada + azeite",
+        "lanche_tarde": "30g mix de castanhas + 1 maçã",
+        "jantar": "Carne magra 180g + abobrinha + cenoura + chuchu refogados",
+    },
+    {
+        "nome": "Fase 4 — Proteína variada e leguminosas",
+        "cafe": "Tapioca 2 unidades + 3 ovos mexidos + 1 banana + café sem açúcar",
+        "lanche_manha": "1 iogurte grego + 1 colher mel + 1 fruta",
+        "almoco": "Arroz integral (4 col) + grão-de-bico (1 concha) + frango/peixe 200g + salada colorida + azeite",
+        "lanche_tarde": "2 fatias de queijo minas + 1 fruta",
+        "jantar": "Atum/frango 200g + mix de legumes assados (batata-doce, cenoura, beterraba)",
+    },
+]
+
 async def cmd_dieta(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if SEU_ID and update.effective_user.id != SEU_ID:
         return
+    # Calcular qual fase baseado em semanas desde 13/06/2026
+    inicio = datetime.date(2026, 6, 13)
+    hoje = datetime.datetime.now(BRT).date()
+    dias = (hoje - inicio).days
+    fase_idx = (dias // 14) % len(PLANOS_DIETA)
+    plano = PLANOS_DIETA[fase_idx]
+    proxima_troca = inicio + datetime.timedelta(days=((dias // 14) + 1) * 14)
+    dias_restantes = (proxima_troca - hoje).days
+
     texto = (
-        "🥗 *Plano Alimentar — 2.300 kcal/dia*\n"
-        "_Para 115kg → 100kg até dezembro_\n\n"
-        "☀️ *Café da manhã (7:10)*\n"
-        "  • 4 ovos mexidos ou cozidos\n"
-        "  • 2 fatias pão integral\n"
-        "  • 1 banana\n"
-        "  • Café sem açúcar\n\n"
-        "🍎 *Lanche manhã (10:00)*\n"
-        "  • 1 iogurte grego natural (sem açúcar)\n"
-        "  • 1 fruta (maçã, laranja ou pera)\n\n"
-        "🍽️ *Almoço (12:00)*\n"
-        "  • Arroz integral — 4 colheres\n"
-        "  • Feijão — 1 concha\n"
-        "  • Frango/peixe grelhado — 200g\n"
-        "  • Salada à vontade (sem molho industrializado)\n"
-        "  • 1 colher de azeite\n\n"
-        "🌰 *Lanche tarde (15:30)*\n"
-        "  • 30g castanhas ou amendoim\n"
-        "  • 1 fruta\n\n"
-        "🌙 *Jantar (19:00)*\n"
-        "  • Proteína magra — 200g (carne, frango ou peixe)\n"
-        "  • Legumes refogados à vontade\n"
-        "  • Salada verde\n\n"
-        "❌ *Evitar sempre:*\n"
-        "  • Refrigerante e suco industrializado\n"
-        "  • Frituras\n"
-        "  • Pão branco, biscoito, bolo\n"
-        "  • Fast food\n\n"
-        "💧 *Beber 2-3L de água por dia*\n\n"
-        "📊 Registre seu peso toda semana: `/peso 114.5`"
+        f"🥗 *{plano['nome']}*\n"
+        f"_2.300 kcal/dia • 115kg → 100kg até dezembro_\n"
+        f"_Próxima variação em {dias_restantes} dias_\n\n"
+        f"☀️ *Café da manhã (7:10)*\n  • {plano['cafe']}\n\n"
+        f"🍎 *Lanche manhã (10:00)*\n  • {plano['lanche_manha']}\n\n"
+        f"🍽️ *Almoço (12:00)*\n  • {plano['almoco']}\n\n"
+        f"🌰 *Lanche tarde (15:30)*\n  • {plano['lanche_tarde']}\n\n"
+        f"🌙 *Jantar (19:00)*\n  • {plano['jantar']}\n\n"
+        f"❌ *Evitar sempre:*\n"
+        f"  • Refrigerante, suco industrializado, frituras\n"
+        f"  • Pão branco, biscoito, fast food\n\n"
+        f"💧 Beber 2-3L de água por dia\n"
+        f"📊 Peso toda semana: `/peso 114.5`"
     )
     await update.message.reply_text(texto, parse_mode="Markdown")
 
