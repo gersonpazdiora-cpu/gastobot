@@ -158,13 +158,12 @@ def registrar_no_sheets(descricao, valor, tipo, categoria):
         "descricao": descricao, "valor": valor, "tipo": tipo, "categoria": categoria,
     }
     try:
-        # Google Apps Script redireciona POST — seguir manualmente preservando o método
-        r = requests.post(SHEETS_WEBHOOK, json=payload, timeout=10, allow_redirects=False)
-        if r.status_code in (301, 302, 303, 307, 308) and "Location" in r.headers:
-            r = requests.post(r.headers["Location"], json=payload, timeout=10, allow_redirects=False)
-        return r.status_code == 200
-    except Exception:
-        return False
+        r = requests.post(SHEETS_WEBHOOK, json=payload, timeout=15)
+        if r.status_code == 200:
+            return True, None
+        return False, f"HTTP {r.status_code}: {r.text[:80]}"
+    except Exception as e:
+        return False, str(e)[:100]
 
 def buscar_resumo():
     try:
@@ -824,7 +823,7 @@ async def handle_mensagem(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
     descricao, valor, tipo, categoria = resultado
-    ok = registrar_no_sheets(descricao, valor, tipo, categoria)
+    ok, erro = registrar_no_sheets(descricao, valor, tipo, categoria)
     if ok:
         emoji = "💰" if tipo == "Entrada" else "📌"
         cor = "✅" if tipo == "Entrada" else "🔴"
@@ -836,7 +835,7 @@ async def handle_mensagem(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
     else:
-        await update.message.reply_text("Não consegui salvar na planilha.")
+        await update.message.reply_text(f"Não consegui salvar.\nErro: {erro}")
 
 # ─── MAIN ────────────────────────────────────────────────────────────────────
 
