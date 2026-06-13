@@ -153,14 +153,14 @@ def parse_lancamento(texto: str):
 
 def registrar_no_sheets(descricao, valor, tipo, categoria):
     agora = datetime.datetime.now()
-    payload = {
+    params = {
+        "acao": "add",
         "data": agora.strftime("%d/%m/%Y"), "hora": agora.strftime("%H:%M"),
         "descricao": descricao, "valor": valor, "tipo": tipo, "categoria": categoria,
     }
     try:
-        r = requests.post(SHEETS_WEBHOOK, json=payload, timeout=15, allow_redirects=False)
-        # Google Apps Script retorna 302 quando executa com sucesso
-        if r.status_code in (200, 302):
+        r = requests.get(SHEETS_WEBHOOK, params=params, timeout=15)
+        if r.status_code == 200:
             return True, None
         return False, f"HTTP {r.status_code}: {r.text[:80]}"
     except Exception as e:
