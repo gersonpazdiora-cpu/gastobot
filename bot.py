@@ -158,8 +158,9 @@ def registrar_no_sheets(descricao, valor, tipo, categoria):
         "descricao": descricao, "valor": valor, "tipo": tipo, "categoria": categoria,
     }
     try:
-        r = requests.post(SHEETS_WEBHOOK, json=payload, timeout=15)
-        if r.status_code == 200:
+        r = requests.post(SHEETS_WEBHOOK, json=payload, timeout=15, allow_redirects=False)
+        # Google Apps Script retorna 302 quando executa com sucesso
+        if r.status_code in (200, 302):
             return True, None
         return False, f"HTTP {r.status_code}: {r.text[:80]}"
     except Exception as e:
